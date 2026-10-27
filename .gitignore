@@ -1,0 +1,31 @@
+# Python environment and cache
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Private credentials
+.env
+.env.*
+!.env.example
+
+# Datasets - do not upload training images
+PlantVillage-Dataset/
+combined_training_dataset/
+dataset/
+expanded_38_dataset/
+expanded_dataset/
+new_plant_dataset/
+new_plant_source/
+new_plant_training_dataset/
+
+# Temporary files and local databases
+temp_audio/
+temp_uploads/
+chroma_db/
+*.mp3
+*.wav
+
+# Python-generated backup files
+*.bak
