@@ -1913,6 +1913,7 @@ function speechText(value) {
     return String(value).trim();
 }
 
+
 async function speakResult() {
     if (!latestResult) {
         showError(UI[currentLanguage()].noImage);
@@ -1929,22 +1930,22 @@ async function speakResult() {
 
         function addSection(label, value) {
             const content = speechText(value);
-            if (content) parts.push(`${label}. ${content}.`);
+            if (content) {
+                parts.push(`${label}. ${content}.`);
+            }
         }
 
         addSection(t.plant || "Plant", localized.plant);
         addSection(t.disease || "Disease", localized.disease);
 
-        if (localized.confidence !== undefined &&
-            localized.confidence !== null) {
+        if (localized.confidence != null) {
             addSection(
                 t.confidence || "Confidence",
                 formatPercent(localized.confidence)
             );
         }
 
-        if (localized.test_accuracy !== undefined &&
-            localized.test_accuracy !== null) {
+        if (localized.test_accuracy != null) {
             addSection(
                 t.accuracy || "Test accuracy",
                 formatPercent(localized.test_accuracy)
@@ -1955,7 +1956,10 @@ async function speakResult() {
             t.level || "Confidence level",
             localized.confidence_level
         );
-        addSection(t.causes || "Causes", localized.causes || localized.cause);
+        addSection(
+            t.causes || "Causes",
+            localized.causes || localized.cause
+        );
         addSection(
             t.medicine || "Treatment",
             localized.medicine || localized.treatment
@@ -1966,90 +1970,75 @@ async function speakResult() {
             localized.suggestions || localized.recommendations
         );
 
-        const speech = parts.join(" ");
+        const speech = parts.join(" ").trim();
 
-        if (!speech.trim()) {
+        if (!speech) {
             showError("No result advice is available to read aloud.");
             return;
         }
 
-        console.log("PlantCare AI speech text:", speech);
+        console.log("Selected speech language:", lang);
+        console.log("Speech text:", speech);
 
-        try {
-            const response = await fetch(`${API}/tts`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    text: speech,
-                    language: lang
-                })
-            });
+        // Request audio from the backend using the selected language.
+        const response = await fetch(`${API}/tts`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                text: speech,
+                language: lang
+            })
+        });
 
-            if (!response.ok) {
-                throw new Error(`TTS server returned HTTP ${response.status}`);
-            }
-
-            const blob = await response.blob();
-
-            if (!blob.size) {
-                throw new Error("The TTS server returned empty audio.");
-            }
-
-            audioUrl = URL.createObjectURL(blob);
-            const audio = new Audio(audioUrl);
-
-            audio.addEventListener("ended", () => {
-                URL.revokeObjectURL(audioUrl);
-            }, { once: true });
-
-            audio.addEventListener("error", () => {
-                URL.revokeObjectURL(audioUrl);
-            }, { once: true });
-
-            await audio.play();
-            return;
-        } catch (error) {
-            console.warn(
-                "Backend voice playback failed; trying browser speech:",
-                error
+        if (!response.ok) {
+            const detail = await response.text().catch(() => "");
+            throw new Error(
+                `TTS failed (HTTP ${response.status}). ${detail}`
             );
+        }
 
+        const blob = await response.blob();
+
+        if (!blob.size) {
+            throw new Error("The backend returned empty audio.");
+        }
+
+        audioUrl = URL.createObjectURL(blob);
+        const audio = new Audio(audioUrl);
+
+        audio.addEventListener("ended", () => {
             if (audioUrl) {
                 URL.revokeObjectURL(audioUrl);
                 audioUrl = null;
             }
-        }
+        }, { once: true });
 
-        if (!("speechSynthesis" in window)) {
-            showError("Voice playback is not supported in this browser.");
-            return;
-        }
+        audio.addEventListener("error", () => {
+            if (audioUrl) {
+                URL.revokeObjectURL(audioUrl);
+                audioUrl = null;
+            }
+            showError("The generated audio could not be played.");
+        }, { once: true });
 
-        window.speechSynthesis.cancel();
+        await audio.play();
 
-        const utterance = new SpeechSynthesisUtterance(speech);
-        const locales = {
-            en: "en-IN",
-            hi: "hi-IN",
-            kn: "kn-IN",
-            mr: "mr-IN",
-            te: "te-IN",
-            ta: "ta-IN"
-        };
-
-        utterance.lang = locales[lang] || "en-IN";
-        utterance.rate = 0.9;
-
-        utterance.onerror = (event) => {
-            console.error("Browser speech error:", event.error);
-        };
-
-        window.speechSynthesis.speak(utterance);
     } catch (error) {
-        console.error("Speak Result failed:", error);
-        showError("Voice output failed. Check the browser console and backend terminal.");
+        console.error("Selected-language voice failed:", error);
+
+        if (audioUrl) {
+            URL.revokeObjectURL(audioUrl);
+        }
+
+        showError(
+            "Voice generation failed for the selected language. " +
+            "Check the backend terminal and try again."
+        );
     }
 }
+
 
 speakButton.addEventListener(
     "click",

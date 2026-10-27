@@ -1,5 +1,5 @@
-# ============================================================
-# PLANTCARE AI - PREDICTION + 5 POINT ADVISORY SYSTEM
+﻿# ============================================================
+# PLANTCARE AI - 38 CLASS PREDICTION + 5 POINT ADVISORY SYSTEM
 # ============================================================
 
 import json
@@ -17,9 +17,9 @@ from torchvision import models, transforms
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_DIR = BASE_DIR / "model"
 
-MODEL_PATH = MODEL_DIR / "combined_30_model_best.pth"
-CLASSES_PATH = MODEL_DIR / "combined_30_classes.json"
-RESULTS_PATH = MODEL_DIR / "combined_30_test_results.json"
+MODEL_PATH = MODEL_DIR / "expanded_38_model_best.pth"
+CLASSES_PATH = MODEL_DIR / "expanded_38_classes.json"
+RESULTS_PATH = MODEL_DIR / "expanded_38_test_results.json"
 
 
 # ============================================================
@@ -30,13 +30,18 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 # ============================================================
-# LOAD CLASSES
+# LOAD CLASS LABELS
 # ============================================================
 
 with open(CLASSES_PATH, "r", encoding="utf-8") as f:
     CLASSES = json.load(f)
 
 NUM_CLASSES = len(CLASSES)
+
+if NUM_CLASSES != 38:
+    raise ValueError(
+        f"Expected 38 classes, but found {NUM_CLASSES}."
+    )
 
 
 # ============================================================
@@ -66,7 +71,6 @@ model.classifier = torch.nn.Sequential(
     torch.nn.Linear(in_features, NUM_CLASSES)
 )
 
-
 checkpoint = torch.load(
     MODEL_PATH,
     map_location=DEVICE,
@@ -86,75 +90,56 @@ model.eval()
 # TEST ACCURACY
 # ============================================================
 
-TEST_ACCURACY = 96.99
+TEST_ACCURACY = 94.91
 
 try:
     if RESULTS_PATH.exists():
-
         with open(RESULTS_PATH, "r", encoding="utf-8") as f:
             results = json.load(f)
 
-        if "accuracy" in results:
+        if "test_accuracy" in results:
+            TEST_ACCURACY = float(results["test_accuracy"])
+        elif "accuracy" in results:
             TEST_ACCURACY = float(results["accuracy"])
 
-        elif "test_accuracy" in results:
-            TEST_ACCURACY = float(results["test_accuracy"])
-
-except Exception:
-    TEST_ACCURACY = 96.99
+except (OSError, ValueError, TypeError, json.JSONDecodeError):
+    TEST_ACCURACY = 94.91
 
 
 # ============================================================
 # DISEASE INFORMATION
-#
-# Every disease contains:
-# 5 causes
-# 5 medicine/treatment points
-# 5 prevention points
 # ============================================================
 
 DISEASE_INFO = {
-
-    # ========================================================
-    # APPLE
-    # ========================================================
-
     "Apple___Apple_scab": {
-
         "plant": "Apple",
         "disease": "Apple Scab",
-
         "causes": [
             "Caused mainly by the fungus Venturia inaequalis.",
             "Wet leaves and humid conditions favor infection.",
             "Rain splash and air movement can spread fungal spores.",
             "Infected fallen leaves can produce new spores.",
-            "Young leaves and developing fruit are highly susceptible."
+            "Young leaves and developing fruit are susceptible."
         ],
-
         "medicine": [
             "Remove severely infected leaves and fruit where practical.",
             "Improve canopy airflow through appropriate pruning.",
             "Use a locally registered apple-scab fungicide when recommended.",
-            "Fungicide active ingredients should be rotated to reduce resistance risk.",
-            "Always follow the crop-specific product label and local agricultural advice."
+            "Rotate fungicide modes of action to reduce resistance risk.",
+            "Follow the product label and local agricultural advice."
         ],
-
         "prevention": [
             "Use resistant apple varieties where available.",
             "Remove or manage infected fallen leaves.",
             "Maintain good air circulation inside the canopy.",
-            "Avoid unnecessary prolonged leaf wetness.",
-            "Inspect new leaves regularly for early symptoms."
+            "Avoid unnecessarily prolonged leaf wetness.",
+            "Inspect new leaves regularly."
         ]
     },
 
-
     "Apple___Black_rot": {
-
         "plant": "Apple",
         "disease": "Apple Black Rot",
-
         "causes": [
             "Commonly associated with the fungus Botryosphaeria obtusa.",
             "Dead wood can provide a source of infection.",
@@ -162,15 +147,13 @@ DISEASE_INFO = {
             "Wounds can provide entry points for the pathogen.",
             "Warm and wet conditions can increase disease development."
         ],
-
         "medicine": [
             "Prune and remove severely infected branches.",
             "Remove mummified fruit from trees and the orchard floor.",
             "Disinfect pruning tools when practical.",
             "Use a locally registered fungicide when recommended.",
-            "Follow the product label and local agricultural recommendations."
+            "Follow the product label and local agricultural advice."
         ],
-
         "prevention": [
             "Maintain good orchard sanitation.",
             "Remove dead branches regularly.",
@@ -180,179 +163,139 @@ DISEASE_INFO = {
         ]
     },
 
-
     "Apple___Cedar_apple_rust": {
-
         "plant": "Apple",
-        "disease": "Apple Cedar Rust",
-
+        "disease": "Apple Cedar Apple Rust",
         "causes": [
-            "Caused by Gymnosporangium rust fungi.",
-            "The disease involves alternate cedar or juniper hosts.",
-            "Spores can move between alternate host plants.",
-            "Wet spring conditions can favor infection.",
-            "Young leaves and fruit can be susceptible."
+            "Caused by the fungus Gymnosporangium juniperi-virginianae.",
+            "The pathogen alternates between apple and juniper hosts.",
+            "Spores can spread during wet spring weather.",
+            "Young leaves and fruit may be affected.",
+            "Nearby susceptible junipers can contribute to disease cycles."
         ],
-
         "medicine": [
-            "Remove severely affected plant material where practical.",
-            "Manage alternate hosts where locally appropriate.",
-            "Improve airflow around the tree canopy.",
-            "Use a locally registered rust fungicide when recommended.",
-            "Follow label instructions and resistance-management guidance."
+            "Confirm the disease before considering treatment.",
+            "Use a locally registered product when recommended.",
+            "Apply treatments at the crop-specific recommended growth stage.",
+            "Follow the product label.",
+            "Consult a local horticultural specialist for severe cases."
         ],
-
         "prevention": [
-            "Use resistant cultivars where available.",
-            "Monitor trees during periods favorable for rust.",
-            "Maintain orchard sanitation.",
-            "Avoid excessively dense canopy growth.",
-            "Manage alternate hosts according to local recommendations."
+            "Choose resistant apple varieties where available.",
+            "Inspect leaves for orange rust spots.",
+            "Manage nearby host plants where practical and appropriate.",
+            "Maintain orchard health.",
+            "Monitor trees during spring."
         ]
     },
-
 
     "Apple___healthy": {
-
         "plant": "Apple",
         "disease": "Healthy",
-
         "causes": [
-            "No visible disease symptoms were detected.",
-            "Leaves appear consistent with the healthy class used by the model.",
-            "No obvious disease lesion was identified by the classifier.",
-            "The plant may currently be in a healthy condition.",
-            "Image quality can affect the reliability of visual classification."
+            "No visible disease pattern was detected by the model.",
+            "The image matches the healthy apple class.",
+            "No obvious leaf disease pattern was identified.",
+            "The plant appears visually healthy.",
+            "Hidden stress may still exist without visible symptoms."
         ],
-
         "medicine": [
-            "No disease medicine is indicated from this prediction.",
-            "Do not apply fungicide or insecticide without a confirmed problem.",
-            "Maintain normal crop nutrition.",
-            "Continue regular plant monitoring.",
-            "Consult an agricultural expert if symptoms appear later."
+            "No disease medicine is indicated by this prediction.",
+            "Avoid unnecessary pesticide applications.",
+            "Maintain balanced nutrition.",
+            "Maintain suitable irrigation.",
+            "Consult an expert if symptoms develop."
         ],
-
         "prevention": [
             "Use healthy planting material.",
-            "Maintain proper irrigation.",
-            "Maintain balanced plant nutrition.",
+            "Maintain orchard sanitation.",
             "Monitor leaves and fruit regularly.",
-            "Maintain good orchard sanitation."
+            "Maintain good canopy airflow.",
+            "Continue routine plant care."
         ]
     },
-
-
-    # ========================================================
-    # BLUEBERRY
-    # ========================================================
 
     "Blueberry___healthy": {
-
         "plant": "Blueberry",
         "disease": "Healthy",
-
         "causes": [
-            "No visible disease symptoms were detected.",
+            "No visible disease pattern was detected by the model.",
             "The image matches the healthy blueberry class.",
-            "No obvious leaf disease pattern was detected.",
-            "The plant appears visually healthy in the submitted image.",
-            "Environmental stress may still exist without visible symptoms."
+            "No obvious leaf disease pattern was identified.",
+            "The plant appears visually healthy.",
+            "Environmental stress may exist without visible symptoms."
         ],
-
         "medicine": [
-            "No disease medicine is indicated from this prediction.",
+            "No disease medicine is indicated by this prediction.",
             "Avoid unnecessary pesticide applications.",
-            "Maintain suitable soil moisture.",
-            "Maintain appropriate crop nutrition.",
-            "Seek expert diagnosis if new symptoms develop."
+            "Maintain suitable soil acidity for blueberries.",
+            "Maintain appropriate irrigation.",
+            "Seek expert advice if symptoms develop."
         ],
-
         "prevention": [
             "Use healthy planting material.",
-            "Maintain good field sanitation.",
-            "Monitor leaves regularly.",
+            "Monitor leaves and stems regularly.",
             "Maintain suitable soil conditions.",
-            "Remove severely damaged plant material when appropriate."
+            "Provide appropriate sunlight and irrigation.",
+            "Maintain garden or field sanitation."
         ]
     },
 
-
-    # ========================================================
-    # CHERRY
-    # ========================================================
-
     "Cherry_(including_sour)___Powdery_mildew": {
-
         "plant": "Cherry",
         "disease": "Cherry Powdery Mildew",
-
         "causes": [
             "Caused by powdery mildew fungi.",
-            "The pathogen produces white powder-like growth.",
-            "Humid conditions can favor disease development.",
-            "Dense foliage can reduce air movement.",
-            "Spores can spread through air movement."
+            "Susceptible young leaves can develop white fungal growth.",
+            "The disease can spread between plants.",
+            "Dense growth may reduce airflow.",
+            "Weather conditions influence disease development."
         ],
-
         "medicine": [
-            "Remove severely affected plant tissue where practical.",
-            "Improve canopy ventilation through suitable pruning.",
-            "Use a locally registered powdery-mildew fungicide when recommended.",
-            "Sulfur or other registered products may be options depending on local rules.",
-            "Follow crop-specific label directions."
+            "Remove severely affected material where practical.",
+            "Improve airflow through suitable pruning.",
+            "Use a locally registered product when recommended.",
+            "Rotate product modes of action where applicable.",
+            "Follow the crop-specific label."
         ],
-
         "prevention": [
-            "Maintain good canopy ventilation.",
-            "Avoid excessive nitrogen fertilization.",
-            "Monitor young leaves regularly.",
-            "Remove severely infected plant material.",
+            "Maintain appropriate spacing and airflow.",
+            "Inspect young leaves regularly.",
+            "Avoid excessive nitrogen application.",
+            "Remove heavily infected material when practical.",
             "Use tolerant varieties where available."
         ]
     },
 
-
     "Cherry_(including_sour)___healthy": {
-
         "plant": "Cherry",
         "disease": "Healthy",
-
         "causes": [
-            "No visible disease symptoms were detected.",
+            "No visible disease pattern was detected by the model.",
             "The image matches the healthy cherry class.",
-            "No obvious disease lesion was identified.",
-            "The plant appears visually healthy in the submitted image.",
-            "Continued monitoring is still recommended."
+            "No obvious leaf disease pattern was identified.",
+            "The plant appears visually healthy.",
+            "Continue monitoring for emerging symptoms."
         ],
-
         "medicine": [
-            "No disease medicine is indicated.",
-            "Avoid unnecessary fungicide applications.",
-            "Maintain normal plant nutrition.",
-            "Maintain proper irrigation.",
-            "Seek expert diagnosis if symptoms appear."
+            "No disease medicine is indicated by this prediction.",
+            "Avoid unnecessary pesticide applications.",
+            "Maintain balanced nutrition.",
+            "Water according to plant needs.",
+            "Seek expert advice if symptoms appear."
         ],
-
         "prevention": [
             "Use healthy planting material.",
-            "Maintain good orchard sanitation.",
+            "Maintain orchard sanitation.",
             "Monitor leaves and fruit.",
             "Maintain good canopy airflow.",
-            "Remove damaged plant material when appropriate."
+            "Prune appropriately for the variety."
         ]
     },
 
-
-    # ========================================================
-    # CORN
-    # ========================================================
-
     "Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot": {
-
         "plant": "Corn",
         "disease": "Corn Cercospora Leaf Spot / Gray Leaf Spot",
-
         "causes": [
             "Associated with Cercospora species causing gray leaf spot.",
             "Warm and humid conditions favor disease development.",
@@ -360,7 +303,6 @@ DISEASE_INFO = {
             "Infected crop residue can carry the pathogen.",
             "Dense crop canopies can maintain high humidity."
         ],
-
         "medicine": [
             "Use a locally registered corn fungicide when treatment is justified.",
             "Apply fungicide according to the crop-specific label.",
@@ -368,7 +310,6 @@ DISEASE_INFO = {
             "Manage infected crop residue where appropriate.",
             "Consult local agricultural guidance for application timing."
         ],
-
         "prevention": [
             "Use resistant or tolerant hybrids.",
             "Practice crop rotation where appropriate.",
@@ -378,12 +319,9 @@ DISEASE_INFO = {
         ]
     },
 
-
     "Corn_(maize)___Common_rust_": {
-
         "plant": "Corn",
         "disease": "Corn Common Rust",
-
         "causes": [
             "Caused by rust fungi such as Puccinia species.",
             "Wind can carry rust spores over long distances.",
@@ -391,15 +329,13 @@ DISEASE_INFO = {
             "Cool to moderate conditions can favor disease development.",
             "Susceptible hybrids can show more severe symptoms."
         ],
-
         "medicine": [
             "Monitor disease severity before chemical treatment.",
-            "Use a locally registered corn fungicide when economically justified.",
+            "Use a locally registered corn fungicide when justified.",
             "Select a registered active ingredient according to local guidance.",
             "Rotate fungicide modes of action when repeated treatment is required.",
             "Follow label requirements and harvest restrictions."
         ],
-
         "prevention": [
             "Use resistant or tolerant corn hybrids.",
             "Scout fields regularly.",
@@ -409,12 +345,9 @@ DISEASE_INFO = {
         ]
     },
 
-
     "Corn_(maize)___Northern_Leaf_Blight": {
-
         "plant": "Corn",
         "disease": "Corn Northern Leaf Blight",
-
         "causes": [
             "Caused by Exserohilum turcicum.",
             "The pathogen can survive in infected crop residue.",
@@ -422,7 +355,6 @@ DISEASE_INFO = {
             "Cool and humid conditions can favor development.",
             "Susceptible corn hybrids can develop large leaf lesions."
         ],
-
         "medicine": [
             "Use a locally registered fungicide when disease pressure is significant.",
             "Apply treatment according to the crop-specific label.",
@@ -430,7 +362,6 @@ DISEASE_INFO = {
             "Manage infected crop residue.",
             "Consult local agricultural experts for treatment timing."
         ],
-
         "prevention": [
             "Plant tolerant or resistant hybrids.",
             "Practice crop rotation where appropriate.",
@@ -440,12 +371,9 @@ DISEASE_INFO = {
         ]
     },
 
-
     "Corn_(maize)___healthy": {
-
         "plant": "Corn",
         "disease": "Healthy",
-
         "causes": [
             "No visible disease symptoms were detected.",
             "The image matches the healthy corn class.",
@@ -453,7 +381,6 @@ DISEASE_INFO = {
             "The plant appears visually healthy.",
             "Environmental stress may still exist without visible symptoms."
         ],
-
         "medicine": [
             "No disease medicine is indicated.",
             "Avoid unnecessary pesticide applications.",
@@ -461,7 +388,6 @@ DISEASE_INFO = {
             "Maintain suitable soil moisture.",
             "Continue regular field monitoring."
         ],
-
         "prevention": [
             "Use healthy seed.",
             "Use suitable crop rotation.",
@@ -471,16 +397,9 @@ DISEASE_INFO = {
         ]
     },
 
-
-    # ========================================================
-    # GRAPE
-    # ========================================================
-
     "Grape___Black_rot": {
-
         "plant": "Grape",
         "disease": "Grape Black Rot",
-
         "causes": [
             "Caused by the fungus Guignardia bidwellii.",
             "Infected berries and plant debris can produce spores.",
@@ -488,7 +407,6 @@ DISEASE_INFO = {
             "Warm and wet weather favors disease development.",
             "Poor sanitation can increase disease pressure."
         ],
-
         "medicine": [
             "Remove infected berries and mummified fruit.",
             "Prune severely infected tissue where appropriate.",
@@ -496,7 +414,6 @@ DISEASE_INFO = {
             "Rotate fungicide modes of action to reduce resistance risk.",
             "Follow the grape-specific product label."
         ],
-
         "prevention": [
             "Maintain vineyard sanitation.",
             "Remove mummified berries.",
@@ -506,12 +423,9 @@ DISEASE_INFO = {
         ]
     },
 
-
     "Grape___Esca_(Black_Measles)": {
-
         "plant": "Grape",
         "disease": "Grape Esca / Black Measles",
-
         "causes": [
             "Associated with several wood-decay fungi.",
             "Fungi can enter through pruning wounds.",
@@ -519,7 +433,6 @@ DISEASE_INFO = {
             "Plant stress can contribute to disease severity.",
             "Poor pruning-wound management can increase risk."
         ],
-
         "medicine": [
             "Remove severely affected wood where practical.",
             "Prune during appropriate dry conditions.",
@@ -527,7 +440,6 @@ DISEASE_INFO = {
             "There is no simple curative fungicide for established wood disease.",
             "Consult a local grape-production specialist for severe cases."
         ],
-
         "prevention": [
             "Use healthy planting material.",
             "Use careful pruning practices.",
@@ -537,12 +449,9 @@ DISEASE_INFO = {
         ]
     },
 
-
     "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)": {
-
         "plant": "Grape",
         "disease": "Grape Leaf Blight",
-
         "causes": [
             "Associated with fungal leaf-spot pathogens.",
             "High humidity can favor disease development.",
@@ -550,7 +459,6 @@ DISEASE_INFO = {
             "Dense canopies can retain moisture.",
             "Infected leaves can contribute to disease spread."
         ],
-
         "medicine": [
             "Remove heavily infected leaves where practical.",
             "Improve vineyard airflow.",
@@ -558,7 +466,6 @@ DISEASE_INFO = {
             "Rotate fungicide modes of action.",
             "Follow the crop-specific product label."
         ],
-
         "prevention": [
             "Maintain good canopy management.",
             "Remove infected leaves when practical.",
@@ -568,12 +475,9 @@ DISEASE_INFO = {
         ]
     },
 
-
     "Grape___healthy": {
-
         "plant": "Grape",
         "disease": "Healthy",
-
         "causes": [
             "No visible disease symptoms were detected.",
             "The image matches the healthy grape class.",
@@ -581,7 +485,6 @@ DISEASE_INFO = {
             "The plant appears visually healthy.",
             "Regular monitoring is still recommended."
         ],
-
         "medicine": [
             "No disease medicine is indicated.",
             "Avoid unnecessary pesticide application.",
@@ -589,7 +492,6 @@ DISEASE_INFO = {
             "Maintain suitable irrigation.",
             "Consult an expert if new symptoms develop."
         ],
-
         "prevention": [
             "Use healthy planting material.",
             "Maintain vineyard sanitation.",
@@ -599,51 +501,35 @@ DISEASE_INFO = {
         ]
     },
 
-
-    # ========================================================
-    # ORANGE
-    # ========================================================
-
     "Orange___Haunglongbing_(Citrus_greening)": {
-
         "plant": "Orange",
         "disease": "Citrus Greening / Huanglongbing",
-
         "causes": [
             "Associated with Candidatus Liberibacter bacteria.",
             "The disease is mainly spread by citrus psyllid insect vectors.",
             "Infected planting material can spread the pathogen.",
             "Infected trees can act as sources of infection.",
-            "The disease can cause leaf mottling, decline and poor fruit development."
+            "The disease can cause leaf mottling and tree decline."
         ],
-
         "medicine": [
-            "There is currently no curative medicine that eliminates HLB from an infected tree.",
-            "Manage citrus psyllid populations using locally registered products when recommended.",
+            "There is no curative medicine that eliminates HLB from an infected tree.",
+            "Manage citrus psyllids using locally registered products when recommended.",
             "Rotate insecticide modes of action according to local guidance.",
-            "Remove infected trees where local agricultural authorities recommend removal.",
-            "Follow local pesticide labels and citrus disease-management recommendations."
+            "Remove infected trees where local authorities recommend removal.",
+            "Follow local pesticide labels and disease-management recommendations."
         ],
-
         "prevention": [
             "Use certified healthy planting material.",
             "Monitor new plant growth for psyllids.",
-            "Regularly inspect trees for symptoms.",
-            "Control psyllid populations according to local recommendations.",
+            "Inspect trees regularly for symptoms.",
+            "Control psyllids according to local recommendations.",
             "Follow applicable quarantine and plant-movement requirements."
         ]
     },
 
-
-    # ========================================================
-    # PEACH
-    # ========================================================
-
     "Peach___Bacterial_spot": {
-
         "plant": "Peach",
         "disease": "Peach Bacterial Spot",
-
         "causes": [
             "Caused by bacterial pathogens such as Xanthomonas species.",
             "Rain and water splash can spread bacteria.",
@@ -651,15 +537,13 @@ DISEASE_INFO = {
             "Warm and wet conditions favor disease development.",
             "Susceptible cultivars can show greater disease severity."
         ],
-
         "medicine": [
             "Remove severely damaged plant material where practical.",
             "Use locally registered copper-based products when recommended.",
             "Some regions may permit other registered bacterial-disease products.",
-            "Avoid unnecessary repeated copper applications because resistance and crop injury can occur.",
+            "Avoid excessive repeated copper applications.",
             "Follow the peach-specific product label and local guidance."
         ],
-
         "prevention": [
             "Use tolerant varieties where available.",
             "Maintain good orchard airflow.",
@@ -669,20 +553,16 @@ DISEASE_INFO = {
         ]
     },
 
-
     "Peach___healthy": {
-
         "plant": "Peach",
         "disease": "Healthy",
-
         "causes": [
             "No visible disease symptoms were detected.",
             "The image matches the healthy peach class.",
             "No obvious leaf disease pattern was identified.",
             "The plant appears visually healthy.",
-            "Continued monitoring is still recommended."
+            "Continued monitoring is recommended."
         ],
-
         "medicine": [
             "No disease medicine is indicated.",
             "Avoid unnecessary fungicide or bactericide application.",
@@ -690,7 +570,6 @@ DISEASE_INFO = {
             "Maintain appropriate irrigation.",
             "Seek expert diagnosis if symptoms appear."
         ],
-
         "prevention": [
             "Use healthy planting material.",
             "Maintain orchard sanitation.",
@@ -700,24 +579,42 @@ DISEASE_INFO = {
         ]
     },
 
-
-    # ========================================================
-    # PEPPER
-    # ========================================================
+    "Pepper_Bacterial_Spot": {
+        "plant": "Pepper",
+        "disease": "Bacterial Spot",
+        "causes": [
+            "Associated with bacterial pathogens such as Xanthomonas species.",
+            "Rain and water splash can spread bacteria.",
+            "Contaminated seed or seedlings can introduce infection.",
+            "Warm and wet conditions can favor disease development.",
+            "Handling wet plants can contribute to spread."
+        ],
+        "medicine": [
+            "Remove severely infected plant material where practical.",
+            "Use locally registered products only when recommended.",
+            "Copper products may be used where locally permitted.",
+            "Avoid repeated unnecessary chemical applications.",
+            "Follow product labels and local agricultural guidance."
+        ],
+        "prevention": [
+            "Use healthy seed and seedlings.",
+            "Avoid unnecessary overhead irrigation.",
+            "Sanitize tools where practical.",
+            "Maintain suitable plant spacing.",
+            "Remove infected crop debris appropriately."
+        ]
+    },
 
     "Pepper_Healthy": {
-
         "plant": "Pepper",
-        "disease": "Pepper Healthy",
-
+        "disease": "Healthy",
         "causes": [
             "No visible disease symptoms were detected.",
             "The image matches the healthy pepper class.",
-            "No obvious bacterial, fungal or viral pattern was detected.",
+            "No obvious disease pattern was identified.",
             "The plant appears visually healthy.",
-            "Hidden stress may still exist without visible leaf symptoms."
+            "Hidden stress may still exist without visible symptoms."
         ],
-
         "medicine": [
             "No disease medicine is indicated.",
             "Avoid unnecessary pesticide application.",
@@ -725,7 +622,6 @@ DISEASE_INFO = {
             "Maintain proper irrigation.",
             "Consult an agricultural expert if symptoms develop."
         ],
-
         "prevention": [
             "Use healthy seed and planting material.",
             "Maintain field sanitation.",
@@ -735,16 +631,61 @@ DISEASE_INFO = {
         ]
     },
 
+    "Potato_Early_Blight": {
+        "plant": "Potato",
+        "disease": "Early Blight",
+        "causes": [
+            "Commonly associated with Alternaria species.",
+            "Older leaves may show brown lesions with concentric rings.",
+            "Plant stress can increase disease severity.",
+            "Spores can spread through wind and rain.",
+            "Warm conditions and leaf wetness can favor disease."
+        ],
+        "medicine": [
+            "Remove severely affected leaves where practical.",
+            "Use a locally registered potato fungicide when recommended.",
+            "Rotate fungicide modes of action where applicable.",
+            "Avoid unnecessary chemical applications.",
+            "Follow product labels and local agricultural guidance."
+        ],
+        "prevention": [
+            "Use healthy seed potatoes.",
+            "Maintain balanced plant nutrition.",
+            "Avoid prolonged leaf wetness.",
+            "Remove infected crop debris where appropriate.",
+            "Scout lower leaves regularly."
+        ]
+    },
 
-    # ========================================================
-    # POTATO
-    # ========================================================
+    "Potato_Healthy": {
+        "plant": "Potato",
+        "disease": "Healthy",
+        "causes": [
+            "No visible disease pattern was detected by the model.",
+            "The image matches the healthy potato class.",
+            "No obvious leaf disease pattern was identified.",
+            "The plant appears visually healthy.",
+            "Continue field monitoring."
+        ],
+        "medicine": [
+            "No disease medicine is indicated by this prediction.",
+            "Avoid unnecessary pesticide applications.",
+            "Maintain balanced nutrition.",
+            "Water according to crop needs.",
+            "Seek expert advice if symptoms develop."
+        ],
+        "prevention": [
+            "Use healthy seed tubers.",
+            "Monitor leaves regularly.",
+            "Maintain suitable soil moisture.",
+            "Manage weeds appropriately.",
+            "Practice suitable crop rotation."
+        ]
+    },
 
     "Potato_Late_Blight": {
-
         "plant": "Potato",
-        "disease": "Potato Late Blight",
-
+        "disease": "Late Blight",
         "causes": [
             "Caused by the oomycete Phytophthora infestans.",
             "Cool and wet conditions can strongly favor disease development.",
@@ -752,34 +693,25 @@ DISEASE_INFO = {
             "Infected plant debris or tubers can carry inoculum.",
             "Rapid disease development can occur under favorable weather."
         ],
-
         "medicine": [
             "Use a locally registered late-blight fungicide when recommended.",
-            "Protectant fungicides may be used as part of an integrated program.",
+            "Protectant fungicides may be part of an integrated program.",
             "Rotate fungicide modes of action to reduce resistance risk.",
-            "Remove or manage severely infected plant material where appropriate.",
-            "Follow the potato-specific product label and local agricultural guidance."
+            "Manage severely infected plant material appropriately.",
+            "Follow product labels and local agricultural guidance."
         ],
-
         "prevention": [
             "Use certified disease-free seed tubers.",
             "Scout fields frequently.",
             "Avoid excessive leaf wetness where possible.",
             "Destroy volunteer potatoes where appropriate.",
-            "Follow local late-blight forecasting and management recommendations."
+            "Follow local late-blight management recommendations."
         ]
     },
 
-
-    # ========================================================
-    # RASPBERRY
-    # ========================================================
-
     "Raspberry___healthy": {
-
         "plant": "Raspberry",
         "disease": "Healthy",
-
         "causes": [
             "No visible disease symptoms were detected.",
             "The image matches the healthy raspberry class.",
@@ -787,7 +719,6 @@ DISEASE_INFO = {
             "The plant appears visually healthy.",
             "Regular monitoring remains important."
         ],
-
         "medicine": [
             "No disease medicine is indicated.",
             "Avoid unnecessary pesticide application.",
@@ -795,7 +726,6 @@ DISEASE_INFO = {
             "Maintain suitable irrigation.",
             "Consult an expert if symptoms develop."
         ],
-
         "prevention": [
             "Use healthy planting material.",
             "Maintain good field sanitation.",
@@ -805,16 +735,9 @@ DISEASE_INFO = {
         ]
     },
 
-
-    # ========================================================
-    # SOYBEAN
-    # ========================================================
-
     "Soybean___healthy": {
-
         "plant": "Soybean",
         "disease": "Healthy",
-
         "causes": [
             "No visible disease symptoms were detected.",
             "The image matches the healthy soybean class.",
@@ -822,15 +745,13 @@ DISEASE_INFO = {
             "The plant appears visually healthy.",
             "Continued field scouting is recommended."
         ],
-
         "medicine": [
             "No disease medicine is indicated.",
             "Avoid unnecessary fungicide applications.",
             "Maintain balanced crop nutrition.",
             "Maintain appropriate soil moisture.",
-            "Seek expert diagnosis if new symptoms develop."
+            "Seek expert diagnosis if symptoms develop."
         ],
-
         "prevention": [
             "Use healthy seed.",
             "Practice suitable crop rotation.",
@@ -840,16 +761,35 @@ DISEASE_INFO = {
         ]
     },
 
-
-    # ========================================================
-    # STRAWBERRY
-    # ========================================================
+    "Squash_Powdery_Mildew": {
+        "plant": "Squash",
+        "disease": "Powdery Mildew",
+        "causes": [
+            "Caused by powdery mildew fungi.",
+            "White powdery patches can develop on leaves.",
+            "Susceptible plants are more likely to become infected.",
+            "Dense foliage can reduce airflow.",
+            "Disease development depends on local environmental conditions."
+        ],
+        "medicine": [
+            "Remove severely affected leaves where practical.",
+            "Use a locally registered product when recommended.",
+            "Rotate product modes of action where applicable.",
+            "Avoid unnecessary chemical applications.",
+            "Follow crop-specific product labels."
+        ],
+        "prevention": [
+            "Use tolerant varieties where available.",
+            "Provide suitable plant spacing.",
+            "Improve airflow around foliage.",
+            "Monitor leaves regularly.",
+            "Remove infected plant debris appropriately."
+        ]
+    },
 
     "Strawberry___Leaf_scorch": {
-
         "plant": "Strawberry",
-        "disease": "Strawberry Leaf Scorch",
-
+        "disease": "Leaf Scorch",
         "causes": [
             "Associated with fungal leaf-spot pathogens.",
             "Wet foliage can favor disease development.",
@@ -857,15 +797,13 @@ DISEASE_INFO = {
             "Dense plant growth can increase humidity.",
             "Infected leaves can provide a source of inoculum."
         ],
-
         "medicine": [
             "Remove severely infected leaves where practical.",
             "Improve airflow around plants.",
             "Use a locally registered fungicide when recommended.",
-            "Rotate fungicide modes of action where repeated treatment is required.",
+            "Rotate fungicide modes of action where required.",
             "Follow the strawberry-specific product label."
         ],
-
         "prevention": [
             "Use healthy planting material.",
             "Remove heavily infected leaves.",
@@ -875,12 +813,9 @@ DISEASE_INFO = {
         ]
     },
 
-
     "Strawberry___healthy": {
-
         "plant": "Strawberry",
         "disease": "Healthy",
-
         "causes": [
             "No visible disease symptoms were detected.",
             "The image matches the healthy strawberry class.",
@@ -888,7 +823,6 @@ DISEASE_INFO = {
             "The plant appears visually healthy.",
             "Continued monitoring is recommended."
         ],
-
         "medicine": [
             "No disease medicine is indicated.",
             "Avoid unnecessary pesticide applications.",
@@ -896,7 +830,6 @@ DISEASE_INFO = {
             "Maintain suitable irrigation.",
             "Consult an expert if symptoms appear."
         ],
-
         "prevention": [
             "Use healthy planting material.",
             "Maintain field sanitation.",
@@ -906,16 +839,9 @@ DISEASE_INFO = {
         ]
     },
 
-
-    # ========================================================
-    # TOMATO
-    # ========================================================
-
     "Tomato_Bacterial_Spot": {
-
         "plant": "Tomato",
-        "disease": "Tomato Bacterial Spot",
-
+        "disease": "Bacterial Spot",
         "causes": [
             "Caused by bacterial pathogens in the Xanthomonas group.",
             "Rain and water splash can spread bacteria.",
@@ -923,15 +849,13 @@ DISEASE_INFO = {
             "Warm and wet conditions favor disease development.",
             "Wounds can provide entry points for bacteria."
         ],
-
         "medicine": [
             "Remove severely infected leaves where practical.",
             "Use locally registered copper-based products when recommended.",
-            "Some areas may permit other registered bacterial-disease products.",
-            "Avoid excessive repeated copper use because resistance may develop.",
+            "Other registered products may be available in some regions.",
+            "Avoid excessive repeated copper use.",
             "Follow the tomato-specific label and local agricultural advice."
         ],
-
         "prevention": [
             "Use certified disease-free seed and seedlings.",
             "Avoid unnecessary overhead irrigation.",
@@ -941,12 +865,35 @@ DISEASE_INFO = {
         ]
     },
 
+    "Tomato_Early_Blight": {
+        "plant": "Tomato",
+        "disease": "Early Blight",
+        "causes": [
+            "Commonly associated with Alternaria species.",
+            "Older leaves may develop brown lesions with concentric rings.",
+            "Spores can spread through wind and rain.",
+            "Plant stress may increase disease severity.",
+            "Warm conditions and leaf wetness can favor disease."
+        ],
+        "medicine": [
+            "Remove severely affected leaves where practical.",
+            "Use a locally registered fungicide when recommended.",
+            "Rotate fungicide modes of action where applicable.",
+            "Avoid unnecessary chemical applications.",
+            "Follow crop-specific labels and local guidance."
+        ],
+        "prevention": [
+            "Use healthy seedlings.",
+            "Maintain balanced nutrition.",
+            "Avoid prolonged leaf wetness.",
+            "Remove infected plant debris where appropriate.",
+            "Scout lower leaves regularly."
+        ]
+    },
 
     "Tomato_Healthy": {
-
         "plant": "Tomato",
-        "disease": "Tomato Healthy",
-
+        "disease": "Healthy",
         "causes": [
             "No visible disease symptoms were detected.",
             "The image matches the healthy tomato class.",
@@ -954,7 +901,6 @@ DISEASE_INFO = {
             "The plant appears visually healthy.",
             "Regular monitoring is still recommended."
         ],
-
         "medicine": [
             "No disease medicine is indicated.",
             "Avoid unnecessary pesticide application.",
@@ -962,7 +908,6 @@ DISEASE_INFO = {
             "Maintain suitable irrigation.",
             "Consult an expert if symptoms develop."
         ],
-
         "prevention": [
             "Use healthy seedlings.",
             "Maintain field sanitation.",
@@ -972,12 +917,9 @@ DISEASE_INFO = {
         ]
     },
 
-
     "Tomato_Late_Blight": {
-
         "plant": "Tomato",
-        "disease": "Tomato Late Blight",
-
+        "disease": "Late Blight",
         "causes": [
             "Caused by Phytophthora infestans.",
             "Cool and wet conditions favor disease development.",
@@ -985,15 +927,13 @@ DISEASE_INFO = {
             "Infected plant debris can provide inoculum.",
             "Dense and wet foliage can increase disease pressure."
         ],
-
         "medicine": [
             "Use a locally registered late-blight fungicide when recommended.",
-            "Protectant fungicides can be part of an integrated disease-management program.",
+            "Protectant fungicides can be part of integrated management.",
             "Rotate fungicide modes of action to reduce resistance risk.",
-            "Remove severely infected plant material where appropriate.",
+            "Remove infected debris where appropriate.",
             "Follow the tomato-specific product label and local recommendations."
         ],
-
         "prevention": [
             "Use healthy seedlings.",
             "Scout plants frequently.",
@@ -1003,12 +943,9 @@ DISEASE_INFO = {
         ]
     },
 
-
     "Tomato_Septoria_Leaf_Spot": {
-
         "plant": "Tomato",
-        "disease": "Tomato Septoria Leaf Spot",
-
+        "disease": "Septoria Leaf Spot",
         "causes": [
             "Caused by the fungus Septoria lycopersici.",
             "Rain splash can spread fungal spores.",
@@ -1016,7 +953,6 @@ DISEASE_INFO = {
             "Infected plant debris can carry the pathogen.",
             "Dense foliage can increase humidity."
         ],
-
         "medicine": [
             "Remove heavily infected lower leaves.",
             "Use a locally registered fungicide when recommended.",
@@ -1024,7 +960,6 @@ DISEASE_INFO = {
             "Avoid unnecessary overhead irrigation.",
             "Follow the tomato-specific product label."
         ],
-
         "prevention": [
             "Remove infected plant debris.",
             "Use healthy seedlings.",
@@ -1034,12 +969,9 @@ DISEASE_INFO = {
         ]
     },
 
-
     "Tomato_Target_Spot": {
-
         "plant": "Tomato",
-        "disease": "Tomato Target Spot",
-
+        "disease": "Target Spot",
         "causes": [
             "Associated with fungal pathogens including Corynespora cassiicola.",
             "Warm and humid conditions favor disease development.",
@@ -1047,7 +979,6 @@ DISEASE_INFO = {
             "Dense foliage can retain moisture.",
             "Infected plant debris can contribute to disease pressure."
         ],
-
         "medicine": [
             "Remove severely infected leaves where practical.",
             "Use a locally registered fungicide when recommended.",
@@ -1055,7 +986,6 @@ DISEASE_INFO = {
             "Improve canopy airflow.",
             "Follow product label directions and local recommendations."
         ],
-
         "prevention": [
             "Use healthy seedlings.",
             "Maintain adequate plant spacing.",
@@ -1065,12 +995,9 @@ DISEASE_INFO = {
         ]
     },
 
-
     "Tomato_Yellow_Leaf_Curl_Virus": {
-
         "plant": "Tomato",
         "disease": "Tomato Yellow Leaf Curl Virus",
-
         "causes": [
             "Caused by Tomato yellow leaf curl virus.",
             "Whiteflies are important insect vectors.",
@@ -1078,15 +1005,13 @@ DISEASE_INFO = {
             "Weeds can sometimes act as alternative hosts.",
             "Warm conditions can support whitefly populations."
         ],
-
         "medicine": [
             "There is no curative medicine that removes the virus from an infected plant.",
             "Control whitefly vectors using locally registered products when recommended.",
             "Remove severely infected plants where local guidance recommends removal.",
-            "Use insect-management strategies to reduce virus transmission.",
+            "Use integrated insect-management strategies.",
             "Follow local pesticide labels and resistance-management recommendations."
         ],
-
         "prevention": [
             "Use virus-free certified seedlings.",
             "Monitor and manage whiteflies.",
@@ -1099,22 +1024,19 @@ DISEASE_INFO = {
 
 
 # ============================================================
-# FALLBACK
+# FALLBACK ADVISORY
 # ============================================================
 
 DEFAULT_INFO = {
-
     "plant": "Plant",
     "disease": "Plant Disease",
-
     "causes": [
         "The model detected a disease pattern in the submitted image.",
         "The exact causal organism should be confirmed by field diagnosis.",
         "Environmental conditions can influence disease development.",
         "Plant stress may increase disease severity.",
-        "Laboratory or expert confirmation may be required."
+        "Expert confirmation may be required."
     ],
-
     "medicine": [
         "Do not apply chemicals without confirming the disease.",
         "Use only products registered for the crop and disease.",
@@ -1122,7 +1044,6 @@ DEFAULT_INFO = {
         "Consult a local agricultural expert before chemical treatment.",
         "Monitor the plant after treatment."
     ],
-
     "prevention": [
         "Use healthy planting material.",
         "Maintain good field sanitation.",
@@ -1138,148 +1059,89 @@ DEFAULT_INFO = {
 # ============================================================
 
 def predict_image(image_path):
-
     try:
+        image_path = Path(image_path)
 
-        # ----------------------------------------------------
-        # OPEN IMAGE
-        # ----------------------------------------------------
+        if not image_path.is_file():
+            return {
+                "success": False,
+                "error": f"Image file not found: {image_path}"
+            }
 
-        image = Image.open(image_path).convert("RGB")
+        with Image.open(image_path) as source_image:
+            image = source_image.convert("RGB")
 
         input_tensor = transform(image).unsqueeze(0).to(DEVICE)
 
-        # ----------------------------------------------------
-        # PREDICTION
-        # ----------------------------------------------------
-
         with torch.no_grad():
-
             outputs = model(input_tensor)
-
             probabilities = torch.softmax(outputs, dim=1)
 
             confidence, predicted_index = torch.max(
+                probabilities, dim=1
+            )
+
+            top_values, top_indices = torch.topk(
                 probabilities,
+                min(5, NUM_CLASSES),
                 dim=1
             )
 
         predicted_index = predicted_index.item()
-
         confidence = confidence.item() * 100
-
         predicted_class = CLASSES[predicted_index]
 
-        # ----------------------------------------------------
-        # INFORMATION
-        # ----------------------------------------------------
-
-        info = DISEASE_INFO.get(
-            predicted_class,
-            DEFAULT_INFO
-        )
-
-        # ----------------------------------------------------
-        # CONFIDENCE
-        # ----------------------------------------------------
+        info = DISEASE_INFO.get(predicted_class, DEFAULT_INFO)
 
         if confidence >= 70:
             confidence_level = "High"
             confidence_message = (
-                "The model has high confidence in this prediction."
+                "The model has high confidence in this prediction. "
+                "Confirm the result by inspecting the plant."
             )
-
         elif confidence >= 50:
             confidence_level = "Moderate"
             confidence_message = (
                 "The model has moderate confidence. "
                 "Field verification is recommended."
             )
-
         else:
             confidence_level = "Low"
             confidence_message = (
                 "The model has low confidence. "
-                "Please verify the image and consult an expert."
+                "Verify the image and consult an expert."
             )
-
-        # ----------------------------------------------------
-        # TOP PREDICTIONS
-        # ----------------------------------------------------
-
-        top_values, top_indices = torch.topk(
-            probabilities,
-            min(5, NUM_CLASSES),
-            dim=1
-        )
 
         top_predictions = []
 
-        for value, index in zip(
-            top_values[0],
-            top_indices[0]
-        ):
-
+        for value, index in zip(top_values[0], top_indices[0]):
             top_predictions.append({
                 "class": CLASSES[index.item()],
-                "confidence": round(
-                    value.item() * 100,
-                    2
-                )
+                "confidence": round(value.item() * 100, 2)
             })
 
-        # ----------------------------------------------------
-        # FINAL RESULT
-        # ----------------------------------------------------
-
         return {
-
             "success": True,
-
             "model": "EfficientNet-B0",
-
             "classes": NUM_CLASSES,
-
-            "test_accuracy": round(
-                TEST_ACCURACY,
-                2
-            ),
-
+            "test_accuracy": round(TEST_ACCURACY, 2),
             "predicted_class": predicted_class,
-
             "plant": info["plant"],
-
             "disease": info["disease"],
-
-            "confidence": round(
-                confidence,
-                2
-            ),
-
+            "confidence": round(confidence, 2),
             "confidence_level": confidence_level,
-
             "confidence_message": confidence_message,
-
-            # NEW STRUCTURED ADVISORY
             "causes": info["causes"],
-
             "medicine": info["medicine"],
-
             "treatment": info["medicine"],
-
             "prevention": info["prevention"],
-
             "suggestions": info["prevention"],
-
             "top_predictions": top_predictions
         }
 
     except Exception as e:
-
         return {
-
             "success": False,
-
             "error": str(e)
         }
 
@@ -1289,69 +1151,47 @@ def predict_image(image_path):
 # ============================================================
 
 if __name__ == "__main__":
-
     import sys
 
     print("=" * 60)
-    print("🌱 PLANTCARE AI")
+    print("PLANTCARE AI - 38 CLASS MODEL")
     print("=" * 60)
-
     print("Device       :", DEVICE)
     print("Classes      :", NUM_CLASSES)
     print("Test Accuracy:", TEST_ACCURACY)
     print()
 
     if len(sys.argv) < 2:
-
-        print(
-            "Usage:"
-        )
-
-        print(
-            'python backend/predict.py "image_path"'
-        )
-
+        print('Usage: python backend/predict.py "path_to_leaf_image"')
         sys.exit(0)
 
-    image_path = sys.argv[1]
+    result = predict_image(sys.argv[1])
 
-    result = predict_image(image_path)
+    if not result.get("success"):
+        print("Prediction failed:", result.get("error"))
+        sys.exit(1)
 
-    print(
-        "Plant       :",
-        result.get("plant")
-    )
-
-    print(
-        "Disease     :",
-        result.get("disease")
-    )
-
-    print(
-        "Confidence  :",
-        result.get("confidence"),
-        "%"
-    )
-
-    print(
-        "Test Acc.   :",
-        result.get("test_accuracy"),
-        "%"
-    )
+    print("Plant       :", result["plant"])
+    print("Disease     :", result["disease"])
+    print("Confidence  :", result["confidence"], "%")
+    print("Test Acc.   :", result["test_accuracy"], "%")
 
     print("\nCAUSES")
-
-    for point in result.get("causes", []):
-        print("•", point)
+    for point in result["causes"]:
+        print("-", point)
 
     print("\nMEDICINE / TREATMENT")
-
-    for point in result.get("medicine", []):
-        print("•", point)
+    for point in result["medicine"]:
+        print("-", point)
 
     print("\nPREVENTION")
+    for point in result["prevention"]:
+        print("-", point)
 
-    for point in result.get("prevention", []):
-        print("•", point)
+    print("\nTOP PREDICTIONS")
+    for item in result["top_predictions"]:
+        print(
+            f"- {item['class']}: {item['confidence']}%"
+        )
 
     print("=" * 60)
